@@ -1,0 +1,65 @@
+'''
+Created on 2012/03/20
+
+@author: sunao_komuro
+'''
+
+from BaseHTTPServer import HTTPServer
+from SimpleHTTPServer import SimpleHTTPRequestHandler
+import threading
+import logging
+
+class HttpControlerHandler(SimpleHTTPRequestHandler):
+    def do_GET(self):
+        mapping = self.mapping()
+        path = self.path
+        if mapping.has_key(path):
+            content = mapping[path]()
+            if content:
+                self.send_response(200)
+                self.send_header("Content-type", "text/plain")
+                self.end_headers()
+                self.wfile.write(content)
+            else:
+                self.send_error(500, "Server Error")
+                self.end_headers()
+        else:
+            self.send_error(404, "Not Found")
+            self.end_headers()
+
+    def mapping(self):
+        return {}
+
+class HttpControler(threading.Thread, HTTPServer):
+    def __init__(self, host, port, handler):
+        self.address = (host, port)
+        self.handler = handler
+        threading.Thread.__init__(self)
+        HTTPServer.__init__(self, self.address, self.handler)
+
+    def run(self):
+        logging.info("start server: %s", self.address)
+        self.serve_forever()
+
+    def __stop(self):
+        threading.Thread.__stop(self)
+        logging.info("stop server: %s", self.address)
+
+if __name__ == '__main__':
+    class Handler(HttpControlerHandler):
+        def index(self):
+            return "hello index!"
+        def start(self):
+            return "start!!"
+        def stop(self):
+            return "stop!!"
+        def mapping(self):
+            return {
+                "/": self.index,
+                "/start": self.start,
+                "/stop": self.start,
+            }
+
+    server = HttpControler("0.0.0.0", 12345, Handler)
+    server.start()
+#    server.shutdown()
