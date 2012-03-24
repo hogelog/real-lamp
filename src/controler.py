@@ -1,7 +1,7 @@
 '''
 Created on 2012/03/20
 
-@author: sunao_komuro
+@author: hogelog
 '''
 
 from BaseHTTPServer import HTTPServer
@@ -9,11 +9,12 @@ from SimpleHTTPServer import SimpleHTTPRequestHandler
 import threading
 import logging
 
+
 class HttpControlerHandler(SimpleHTTPRequestHandler):
     def do_GET(self):
         mapping = self.mapping()
         path = self.path
-        if mapping.has_key(path):
+        if path in mapping:
             content = mapping[path]()
             if content:
                 self.send_response(200)
@@ -29,6 +30,17 @@ class HttpControlerHandler(SimpleHTTPRequestHandler):
 
     def mapping(self):
         return {}
+
+
+class BaseHttpControlerHandler(HttpControlerHandler):
+    def index(self):
+        return "Hello Http Controler!"
+
+    def mapping(self):
+        return {
+            "/": self.index,
+        }
+
 
 class HttpControler(threading.Thread, HTTPServer):
     def __init__(self, host, port, handler):
@@ -46,19 +58,18 @@ class HttpControler(threading.Thread, HTTPServer):
         logging.info("stop server: %s", self.address)
 
 if __name__ == '__main__':
-    class Handler(HttpControlerHandler):
-        def index(self):
-            return "hello index!"
+    class Handler(BaseHttpControlerHandler):
         def start(self):
-            return "start!!"
+            return "Start!"
+
         def stop(self):
-            return "stop!!"
+            return "Stop!"
+
         def mapping(self):
-            return {
-                "/": self.index,
-                "/start": self.start,
-                "/stop": self.start,
-            }
+            mapping = BaseHttpControlerHandler.mapping(self)
+            mapping["/start"] = self.start
+            mapping["/stop"] = self.stop
+            return mapping
 
     server = HttpControler("0.0.0.0", 12345, Handler)
     server.start()
